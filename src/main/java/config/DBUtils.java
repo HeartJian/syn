@@ -15,7 +15,7 @@ public class DBUtils {
         List<Map<String, Object>> list = new ArrayList<Map<String,Object>>();
         try {
             Class.forName("com.mysql.jdbc.Driver");
-            conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/easyui", "root", "root");
+            conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/syn-test", "root", "123456");
             sta = conn.createStatement();
             rs = sta.executeQuery("select * from "+tableName);
             ResultSetMetaData md = rs.getMetaData(); //获得结果集结构信息,元数据

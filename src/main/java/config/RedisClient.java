@@ -6,7 +6,7 @@ import redis.clients.jedis.*;
 
 import java.util.ArrayList;
 import java.util.List;
-
+//redis操作类
 public class RedisClient {
     private final Logger logger = LoggerFactory.getLogger(RedisClient.class);
     public Jedis jedis;//非切片客户端连接
@@ -42,7 +42,7 @@ public class RedisClient {
         config.setMaxWaitMillis(10000);
         config.setTestOnBorrow(false);
 
-        jedisPool = new JedisPool(config,"127.0.0.1",6379);
+        jedisPool = new JedisPool(config,"127.0.0.1",6379,1000,"H2h2828");
     }
 
     /**

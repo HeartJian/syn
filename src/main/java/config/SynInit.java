@@ -1,46 +1,62 @@
 package config;
 
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
+import java.util.*;
+
+//初始化类
 public class SynInit {
     private final Logger logger = LoggerFactory.getLogger(SynInit.class);
-//mysqlData:key 表名，Value->key 主键 value json;
-    public SynInit(List<String> tableNameList,Map<String,Map> mysqlData){
+    Jedis jedis = RedisClient.getInstance().jedisPool.getResource();
+
+    //mysqlData:key 主键 value json;
+    public void beginInit(String tableName, List<Map> mysqldataList) {
         logger.info("开始同步");
-        Jedis jedis=RedisClient.getInstance().jedisPool.getResource();
-        HashMap<String,Map> jedisData=new HashMap<>();
 
-        tableNameList.forEach(tableName->{
-            Map dataMap=jedis.hgetAll(tableName);
-            if(MapUtils.isNotEmpty(dataMap)){
-                jedisData.put(tableName,dataMap);
+
+        Map jedisMap = jedis.hgetAll(tableName);
+        if (MapUtils.isNotEmpty(jedisMap)) {
+            //以数据库数据为准增加redis缺漏KEY
+            for (Map mysqlData : mysqldataList) {
+                mysqlData.keySet().forEach(key -> {
+                    if (!jedisMap.keySet().contains(key)) {
+                        jedis.hset(tableName, String.valueOf(key), (String) mysqlData.get(key));
+                    }
+                });
+
             }
-        });
+            //删除redis多余key，更新原有数据
+            for (Object jedisKey : jedisMap.keySet()) {
+                List keyList = new ArrayList();
+                Map mysqlDataMap = new HashMap<>();
 
-           for(String redisKey:jedisData.keySet()){
-               for(String mysqlTableName:mysqlData.keySet()){
-                   if(redisKey.equalsIgnoreCase(mysqlTableName)){
-                       for(String primaryKey:mysqlData.keySet()){
-                           //不等就覆盖
-                           if(!jedisData.get(redisKey).get(primaryKey).equals(mysqlData.get(redisKey).get(primaryKey))){
-                               jedis.hset(redisKey,primaryKey,(String)mysqlData.get(redisKey).get(primaryKey));
-                           }
-                       };
-                   }
+                for (Map mysqlData : mysqldataList) {
+                    mysqlData.keySet().forEach(dataKey -> {
+                        keyList.add(dataKey);
+                        mysqlDataMap.put(dataKey, mysqlData);
+                    });
+                }
+                if (keyList.contains((Integer.valueOf((String) jedisKey)))) {
+                    jedis.hset(tableName, String.valueOf(jedisKey),
+                            (String) ((Map) mysqlDataMap.get(Integer.valueOf((String) jedisKey))).get(Integer.valueOf((String) jedisKey)));
+                } else {
+                    jedis.hdel(tableName, String.valueOf(jedisKey));
 
-               }
-           }
-
+                }
+                ;
+            }
+        } else {
+            mysqldataList.forEach(mysqlData -> mysqlData.keySet().forEach(key -> {
+                jedis.hset(tableName, String.valueOf(key), (String) mysqlData.get(key));
+            }));
+        }
 
     }
+
 }
+
 
